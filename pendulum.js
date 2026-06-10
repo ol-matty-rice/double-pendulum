@@ -60,8 +60,10 @@
     trace = [];
     ghost = [];
     paused = false;
+    lastTime = null;
+    accumulator = 0;
     document.getElementById("pauseBtn").textContent = "Pause";
-    loop();
+    animId = requestAnimationFrame(loop);
   }
 
   /* ── Physics: Lagrangian double-pendulum EOM ───────────── */
@@ -365,7 +367,7 @@
   document.getElementById("pauseBtn").addEventListener("click", () => {
     paused = !paused;
     document.getElementById("pauseBtn").textContent = paused ? "Resume" : "Pause";
-    if (!paused) { lastTime = null; loop(performance.now()); }
+    if (!paused) { lastTime = null; animId = requestAnimationFrame(loop); }
   });
 
   document.getElementById("clearBtn").addEventListener("click", () => {
@@ -414,6 +416,5 @@
 
   /* ── Start ─────────────────────────────────────────────── */
   resetSim();
-  animId = requestAnimationFrame(loop);
 
 })();
