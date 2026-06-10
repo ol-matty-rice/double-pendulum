@@ -209,8 +209,8 @@
         ctx.strokeStyle = `rgba(124,106,247,${alpha})`;
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(ghost[i - 1].x1, ghost[i - 1].y1);
-        ctx.lineTo(ghost[i].x1, ghost[i].y1);
+        ctx.moveTo(ghost[i - 1].x1 + panX, ghost[i - 1].y1 + panY);
+        ctx.lineTo(ghost[i].x1 + panX, ghost[i].y1 + panY);
         ctx.stroke();
       }
     }
@@ -324,16 +324,17 @@
       const prev = state;
       state = stepRK4(state, params, DT);
 
-      // Capture ghost arm positions every 3 steps
-      ghost.push({ x1: getPositions(prev, params).x1, y1: getPositions(prev, params).y1 });
+      // Capture ghost arm positions in world space
+      const gp = getPositions(prev, params);
+      ghost.push({ x1: gp.x1 - panX, y1: gp.y1 - panY });
       if (ghost.length > 80) ghost.shift();
 
       accumulator -= DT;
     }
 
-    // Record trace position
+    // Record trace in world space (relative to pivot, pan-independent)
     const pos = getPositions(state, params);
-    trace.push({ x: pos.x2, y: pos.y2 });
+    trace.push({ x: pos.x2 - panX, y: pos.y2 - panY });
     if (trace.length > 2000) trace.shift(); // hard cap
 
     drawScene();
