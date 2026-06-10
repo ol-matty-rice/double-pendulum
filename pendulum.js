@@ -146,14 +146,25 @@
   }
 
   /* ── Positions ─────────────────────────────────────────── */
-  function getPositions(s, p) {
-    const cx = canvas.width / 2 + panX;
-    const cy = canvas.height / 2 + panY;
+  // World space: pivot at canvas center, no pan. Used for storing trace/ghost.
+  function getWorldPositions(s, p) {
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
     const x1 = cx + p.l1s * Math.sin(s.a1);
     const y1 = cy + p.l1s * Math.cos(s.a1);
     const x2 = x1 + p.l2s * Math.sin(s.a2);
     const y2 = y1 + p.l2s * Math.cos(s.a2);
     return { cx, cy, x1, y1, x2, y2 };
+  }
+
+  // Screen space: world + pan offset. Used for drawing.
+  function getPositions(s, p) {
+    const w = getWorldPositions(s, p);
+    return {
+      cx: w.cx + panX, cy: w.cy + panY,
+      x1: w.x1 + panX, y1: w.y1 + panY,
+      x2: w.x2 + panX, y2: w.y2 + panY,
+    };
   }
 
   /* ── Energy ────────────────────────────────────────────── */
@@ -219,15 +230,13 @@
     if (document.getElementById("showTrace").checked && trace.length > 1) {
       const maxLen = parseInt(document.getElementById("traceLen").value);
       const start = Math.max(0, trace.length - maxLen);
-      ctx.beginPath();
-      ctx.moveTo(trace[start].x, trace[start].y);
       for (let i = start + 1; i < trace.length; i++) {
         const t = (i - start) / (trace.length - start);
         ctx.strokeStyle = `rgba(106,247,196,${t * 0.85})`;
         ctx.lineWidth = t * 1.5;
         ctx.beginPath();
-        ctx.moveTo(trace[i - 1].x, trace[i - 1].y);
-        ctx.lineTo(trace[i].x, trace[i].y);
+        ctx.moveTo(trace[i - 1].x + panX, trace[i - 1].y + panY);
+        ctx.lineTo(trace[i].x + panX, trace[i].y + panY);
         ctx.stroke();
       }
     }
@@ -325,16 +334,16 @@
       state = stepRK4(state, params, DT);
 
       // Capture ghost arm positions in world space
-      const gp = getPositions(prev, params);
-      ghost.push({ x1: gp.x1 - panX, y1: gp.y1 - panY });
+      const gp = getWorldPositions(prev, params);
+      ghost.push({ x1: gp.x1, y1: gp.y1 });
       if (ghost.length > 80) ghost.shift();
 
       accumulator -= DT;
     }
 
     // Record trace in world space (relative to pivot, pan-independent)
-    const pos = getPositions(state, params);
-    trace.push({ x: pos.x2 - panX, y: pos.y2 - panY });
+    const pos = getWorldPositions(state, params);
+    trace.push({ x: pos.x2, y: pos.y2 });
     if (trace.length > 2000) trace.shift(); // hard cap
 
     drawScene();
