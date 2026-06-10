@@ -14,7 +14,7 @@
   function resizeCanvas() {
     const wrap = canvas.parentElement;
     const w = wrap.clientWidth;
-    const h = Math.max(420, Math.min(w * 0.85, 580));
+    const h = Math.max(500, Math.min(w, 680));
     canvas.width = w;
     canvas.height = h;
   }
@@ -24,6 +24,7 @@
 
   /* ── State ─────────────────────────────────────────────── */
   let state, params, trace, ghost, paused, animId;
+  let panX = 0, panY = 0; // view pan offset
 
   function defaultParams() {
     return {
@@ -43,10 +44,10 @@
     cancelAnimationFrame(animId);
     params = defaultParams();
 
-    // Scale lengths so they fit the canvas
-    const maxLen = (canvas.height * 0.44);
+    // Scale so full swing (l1+l2 radius) fits inside canvas with 10% margin
+    const maxRadius = Math.min(canvas.width, canvas.height) * 0.44;
     const rawSum = params.l1 + params.l2;
-    const scale  = rawSum > maxLen ? maxLen / rawSum : 1;
+    const scale  = rawSum > maxRadius ? maxRadius / rawSum : 1;
     params.l1s = params.l1 * scale;
     params.l2s = params.l2 * scale;
 
@@ -60,6 +61,8 @@
     trace = [];
     ghost = [];
     paused = false;
+    panX = 0;
+    panY = 0;
     lastTime = null;
     accumulator = 0;
     document.getElementById("pauseBtn").textContent = "Pause";
@@ -144,8 +147,8 @@
 
   /* ── Positions ─────────────────────────────────────────── */
   function getPositions(s, p) {
-    const cx = canvas.width / 2;
-    const cy = canvas.height * 0.28;
+    const cx = canvas.width / 2 + panX;
+    const cy = canvas.height / 2 + panY;
     const x1 = cx + p.l1s * Math.sin(s.a1);
     const y1 = cy + p.l1s * Math.cos(s.a1);
     const x2 = x1 + p.l2s * Math.sin(s.a2);
@@ -375,44 +378,81 @@
     ghost = [];
   });
 
-  /* ── Drag to set initial angle ─────────────────────────── */
-  // (Click canvas to drag pendulum to new start position)
-  let dragging = null;
+  /* ── Pan & drag-to-reposition ──────────────────────────── */
+  let dragging = null;   // 'bob1' | 'bob2' | null
+  let panning  = false;
+  let panStart = { x: 0, y: 0 };
+  let panOrigin = { x: 0, y: 0 };
 
-  canvas.addEventListener("mousedown", (e) => {
-    if (!paused) return;
+  function canvasPoint(e) {
     const rect = canvas.getBoundingClientRect();
-    const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
-    const my = (e.clientY - rect.top) * (canvas.height / rect.height);
-    const { cx, cy, x1, y1, x2, y2 } = getPositions(state, params);
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const src = e.touches ? e.touches[0] : e;
+    return {
+      x: (src.clientX - rect.left) * scaleX,
+      y: (src.clientY - rect.top)  * scaleY,
+    };
+  }
 
-    const d1 = Math.hypot(mx - x1, my - y1);
-    const d2 = Math.hypot(mx - x2, my - y2);
-    if (d1 < 20) dragging = "bob1";
-    else if (d2 < 20) dragging = "bob2";
-  });
+  function onPointerDown(e) {
+    const { x: mx, y: my } = canvasPoint(e);
+    const { x1, y1, x2, y2 } = getPositions(state, params);
 
-  canvas.addEventListener("mousemove", (e) => {
-    if (!dragging || !paused) return;
-    const rect = canvas.getBoundingClientRect();
-    const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
-    const my = (e.clientY - rect.top) * (canvas.height / rect.height);
-    const { cx, cy, x1, y1 } = getPositions(state, params);
-
-    if (dragging === "bob1") {
-      state.a1 = Math.atan2(mx - cx, my - cy);
-      state.v1 = 0; state.v2 = 0;
-    } else if (dragging === "bob2") {
-      state.a2 = Math.atan2(mx - x1, my - y1);
-      state.v1 = 0; state.v2 = 0;
+    if (paused) {
+      const d1 = Math.hypot(mx - x1, my - y1);
+      const d2 = Math.hypot(mx - x2, my - y2);
+      if (d1 < 22) { dragging = "bob1"; return; }
+      if (d2 < 22) { dragging = "bob2"; return; }
     }
-    trace = []; ghost = [];
-    drawScene();
-  });
 
-  canvas.addEventListener("mouseup", () => { dragging = null; });
+    // Start pan
+    panning = true;
+    panStart  = { x: mx, y: my };
+    panOrigin = { x: panX, y: panY };
+    canvas.style.cursor = "grabbing";
+  }
 
-  canvas.title = "Pause and drag the bobs to reposition";
+  function onPointerMove(e) {
+    const { x: mx, y: my } = canvasPoint(e);
+
+    if (dragging && paused) {
+      const { cx, cy, x1, y1 } = getPositions(state, params);
+      if (dragging === "bob1") {
+        state.a1 = Math.atan2(mx - cx, my - cy);
+        state.v1 = 0; state.v2 = 0;
+      } else {
+        state.a2 = Math.atan2(mx - x1, my - y1);
+        state.v1 = 0; state.v2 = 0;
+      }
+      trace = []; ghost = [];
+      drawScene();
+      return;
+    }
+
+    if (panning) {
+      panX = panOrigin.x + (mx - panStart.x);
+      panY = panOrigin.y + (my - panStart.y);
+      if (!paused) drawScene(); // will redraw on next frame anyway
+    }
+  }
+
+  function onPointerUp() {
+    dragging = null;
+    panning  = false;
+    canvas.style.cursor = "grab";
+  }
+
+  canvas.addEventListener("mousedown",  onPointerDown);
+  canvas.addEventListener("mousemove",  onPointerMove);
+  canvas.addEventListener("mouseup",    onPointerUp);
+  canvas.addEventListener("mouseleave", onPointerUp);
+  canvas.addEventListener("touchstart", e => { e.preventDefault(); onPointerDown(e); }, { passive: false });
+  canvas.addEventListener("touchmove",  e => { e.preventDefault(); onPointerMove(e); }, { passive: false });
+  canvas.addEventListener("touchend",   onPointerUp);
+
+  canvas.style.cursor = "grab";
+  canvas.title = "Drag to pan · Pause then drag bobs to reposition";
 
   /* ── Start ─────────────────────────────────────────────── */
   resetSim();
