@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Double Pendulum — Chaos in Motion</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <span class="eyebrow">Deterministic Chaos</span>
+      <h1>Double Pendulum</h1>
+      <p class="subtitle">Two linked arms. Infinite complexity.</p>
+    </div>
+  </header>
+
+  <main>
+    <div class="sim-layout">
+      <!-- Canvas -->
+      <div class="canvas-wrap">
+        <canvas id="pendulumCanvas"></canvas>
+        <div class="trace-label">position trace</div>
+      </div>
+
+      <!-- Controls -->
+      <aside class="controls">
+        <section class="control-group">
+          <h2>Physics</h2>
+
+          <label>
+            <span class="label-text">Gravity <em id="gravVal">9.8</em> m/s²</span>
+            <input type="range" id="gravity" min="0.5" max="30" step="0.1" value="9.8" />
+          </label>
+
+          <label>
+            <span class="label-text">Air Resistance <em id="dampVal">0.00</em></span>
+            <input type="range" id="damping" min="0" max="0.05" step="0.001" value="0" />
+          </label>
+
+          <label>
+            <span class="label-text">Sim Speed <em id="speedVal">1.0</em>×</span>
+            <input type="range" id="speed" min="0.1" max="5" step="0.1" value="1" />
+          </label>
+        </section>
+
+        <section class="control-group">
+          <h2>Arm 1</h2>
+
+          <label>
+            <span class="label-text">Length <em id="l1Val">200</em> px</span>
+            <input type="range" id="l1" min="50" max="280" step="5" value="200" />
+          </label>
+
+          <label>
+            <span class="label-text">Mass <em id="m1Val">10</em> kg</span>
+            <input type="range" id="m1" min="1" max="30" step="1" value="10" />
+          </label>
+
+          <label>
+            <span class="label-text">Start Angle <em id="a1Val">90</em>°</span>
+            <input type="range" id="a1" min="-180" max="180" step="1" value="90" />
+          </label>
+        </section>
+
+        <section class="control-group">
+          <h2>Arm 2</h2>
+
+          <label>
+            <span class="label-text">Length <em id="l2Val">160</em> px</span>
+            <input type="range" id="l2" min="50" max="280" step="5" value="160" />
+          </label>
+
+          <label>
+            <span class="label-text">Mass <em id="m2Val">10</em> kg</span>
+            <input type="range" id="m2" min="1" max="30" step="1" value="10" />
+          </label>
+
+          <label>
+            <span class="label-text">Start Angle <em id="a2Val">45</em>°</span>
+            <input type="range" id="a2" min="-180" max="180" step="1" value="45" />
+          </label>
+        </section>
+
+        <section class="control-group">
+          <h2>Display</h2>
+
+          <label class="toggle-label">
+            <span class="label-text">Show Trace</span>
+            <input type="checkbox" id="showTrace" checked />
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </label>
+
+          <label>
+            <span class="label-text">Trace Length <em id="traceVal">400</em></span>
+            <input type="range" id="traceLen" min="20" max="1200" step="20" value="400" />
+          </label>
+
+          <label class="toggle-label">
+            <span class="label-text">Ghost Trail</span>
+            <input type="checkbox" id="showGhost" />
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </label>
+        </section>
+
+        <div class="btn-row">
+          <button id="resetBtn" class="btn-primary">Reset</button>
+          <button id="pauseBtn" class="btn-secondary">Pause</button>
+          <button id="clearBtn" class="btn-ghost">Clear Trace</button>
+        </div>
+
+        <div class="energy-display">
+          <div class="energy-row">
+            <span>Kinetic</span>
+            <div class="bar-wrap"><div id="keBar" class="bar ke"></div></div>
+          </div>
+          <div class="energy-row">
+            <span>Potential</span>
+            <div class="bar-wrap"><div id="peBar" class="bar pe"></div></div>
+          </div>
+          <div class="energy-row">
+            <span>Total</span>
+            <div class="bar-wrap"><div id="teBar" class="bar te"></div></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <footer>
+    <p>Equations of motion solved via Runge-Kutta 4 · Built with vanilla JS + Canvas</p>
+  </footer>
+
+  <script src="pendulum.js"></script>
+</body>
+</html>
